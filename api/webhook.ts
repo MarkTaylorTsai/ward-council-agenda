@@ -22,22 +22,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!source) return null;
 
       // Track group or user
-      if (source.groupId) {
-        await supabaseServer
-          .from('line_contacts')
-          .upsert(
-            { contact_id: source.groupId, contact_type: 'group', last_seen_at: new Date().toISOString() },
-            { onConflict: 'contact_id' }
-          )
-          .catch(() => {}); // Ignore errors
-      } else if (source.userId) {
-        await supabaseServer
-          .from('line_contacts')
-          .upsert(
-            { contact_id: source.userId, contact_type: 'user', last_seen_at: new Date().toISOString() },
-            { onConflict: 'contact_id' }
-          )
-          .catch(() => {}); // Ignore errors
+      try {
+        if (source.groupId) {
+          await supabaseServer
+            .from('line_contacts')
+            .upsert(
+              { contact_id: source.groupId, contact_type: 'group', last_seen_at: new Date().toISOString() },
+              { onConflict: 'contact_id' }
+            );
+        } else if (source.userId) {
+          await supabaseServer
+            .from('line_contacts')
+            .upsert(
+              { contact_id: source.userId, contact_type: 'user', last_seen_at: new Date().toISOString() },
+              { onConflict: 'contact_id' }
+            );
+        }
+      } catch (error) {
+        // Ignore tracking errors
       }
       return null;
     })
