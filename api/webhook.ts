@@ -142,11 +142,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return 'ok';
           }
 
-          await replyText(
-            replyToken,
-            '指令無法辨識。請使用：\n查看支會議會 全部\n新增支會議會 {日期 時間 地點 主持人 記錄人 目的 開會祈禱 閉會祈禱}\n更新支會議會 {id 項目 新內容}\n刪除支會議會 {id}'
-          );
-          return 'ok';
+          // Don't reply to unrecognized messages - just ignore them
+          return null;
         } catch (e: any) {
           console.error('Error processing message:', e);
           try {
