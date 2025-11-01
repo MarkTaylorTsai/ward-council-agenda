@@ -12,7 +12,24 @@ export function verifyLineSignature(rawBody: string | Buffer, signatureHeader?: 
   const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody, 'utf8');
   hmac.update(bodyBuffer);
   const digest = hmac.digest('base64');
+  
+  // Debug logging
+  console.log('Signature verification debug:', {
+    receivedSignature: signatureHeader,
+    computedSignature: digest,
+    match: digest === signatureHeader,
+    bodyLength: bodyBuffer.length,
+    bodyPreview: bodyBuffer.toString('utf8').substring(0, 100),
+  });
+  
   return digest === signatureHeader;
+}
+
+// Create LINE middleware for signature verification
+export function createLineMiddleware() {
+  return middleware({
+    channelSecret,
+  } as MiddlewareConfig);
 }
 
 export async function replyText(replyToken: string, text: string) {

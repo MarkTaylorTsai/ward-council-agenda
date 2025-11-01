@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const signature = req.headers['x-line-signature'] as string | undefined;
     
+    // Verify signature with detailed logging
     if (!verifyLineSignature(rawBodyBuffer, signature)) {
       console.error('Signature verification failed.', {
         hasSignature: !!signature,
@@ -153,4 +154,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ error: error?.message || 'Internal server error' });
   }
 }
-
