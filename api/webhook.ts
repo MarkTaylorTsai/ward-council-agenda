@@ -3,17 +3,39 @@ import { supabaseServer } from '../src/lib/supabase.js';
 import { replyText, verifyLineSignature } from '../src/lib/line.js';
 import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser.js';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+function getRawBody(req: VercelRequest): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    // Get raw body for signature verification
+    const rawBody = await getRawBody(req);
     const signature = req.headers['x-line-signature'] as string | undefined;
+    
     if (!verifyLineSignature(rawBody, signature)) {
+      console.error('Signature verification failed.', {
+        hasSignature: !!signature,
+        hasBody: !!rawBody,
+        bodyLength: rawBody?.length,
+      });
       return res.status(401).send('Invalid signature');
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const body = JSON.parse(rawBody);
     const events = body?.events || [];
 
     // Track groups and users from all events
