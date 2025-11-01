@@ -112,10 +112,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .order('time', { ascending: true });
             if (error) throw error;
             if (!data || data.length === 0) {
-              await replyText(replyToken, '目前沒有已儲存的支會議會。');
+              await replyText(
+                replyToken,
+                '📋 支會議會清單\n\n目前沒有已儲存的支會議會。\n\n請使用「新增支會議會」指令來新增會議。'
+              );
             } else {
-              const lines = data.map((m) => `${m.id} ${m.date} ${m.time.slice(0,5)} ${m.location}`);
-              await replyText(replyToken, ['已儲存的支會議會：', ...lines].join('\n'));
+              const header = `📋 已儲存的支會議會（共 ${data.length} 筆）\n`;
+              const lines = data.map((m, i) => {
+                const time = m.time.slice(0, 5);
+                return `\n${i + 1}. 📅 ${m.date}  ${time}\n   📍 ${m.location}\n   👤 主持人：${m.host}\n   🆔 ${m.id}`;
+              });
+              await replyText(replyToken, header + lines.join(''));
             }
             return 'ok';
           }
@@ -125,7 +132,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log('Matched: parseAdd command');
             const { data, error } = await supabaseServer.from('branch_meetings').insert(add).select('id').single();
             if (error) throw error;
-            await replyText(replyToken, `新增成功，id：${data.id}`);
+            const time = add.time.slice(0, 5);
+            await replyText(
+              replyToken,
+              `✅ 新增成功！\n\n📅 日期：${add.date}\n🕒 時間：${time}\n📍 地點：${add.location}\n👤 主持人：${add.host}\n📝 記錄人：${add.recorder}\n\n🆔 ID：${data.id}\n\n使用此 ID 可以更新或刪除會議記錄。`
+            );
             return 'ok';
           }
 
@@ -137,7 +148,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .update({ [upd.field]: upd.value })
               .eq('id', upd.id);
             if (error) throw error;
-            await replyText(replyToken, `更新成功：${upd.field}`);
+            
+            // Get field display name
+            const fieldNames: Record<string, string> = {
+              date: '📅 日期',
+              time: '🕒 時間',
+              location: '📍 地點',
+              host: '👤 主持人',
+              recorder: '📝 記錄人',
+              purpose: '📋 目的',
+              opening_prayer: '🙏 開會祈禱',
+              closing_prayer: '🙏 閉會祈禱',
+            };
+            
+            await replyText(
+              replyToken,
+              `✅ 更新成功！\n\n${fieldNames[upd.field] || upd.field}：${upd.value}\n\n🆔 ID：${upd.id}`
+            );
             return 'ok';
           }
 
@@ -146,7 +173,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log('Matched: parseDelete command');
             const { error } = await supabaseServer.from('branch_meetings').delete().eq('id', del.id);
             if (error) throw error;
-            await replyText(replyToken, '刪除成功');
+            await replyText(
+              replyToken,
+              `✅ 刪除成功！\n\n已刪除會議記錄。\n🆔 ID：${del.id}`
+            );
             return 'ok';
           }
 
@@ -156,7 +186,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } catch (e: any) {
           console.error('Error processing message:', e);
           try {
-            await replyText(replyToken, `發生錯誤：${e?.message || 'unknown'}`);
+            await replyText(
+              replyToken,
+              `❌ 發生錯誤\n\n錯誤訊息：${e?.message || '未知錯誤'}\n\n請檢查指令格式是否正確，或稍後再試。`
+            );
           } catch (replyError) {
             console.error('Error sending error reply:', replyError);
           }
