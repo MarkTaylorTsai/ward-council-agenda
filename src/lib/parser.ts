@@ -30,6 +30,14 @@ export function isViewAll(text: string): boolean {
   return /^查看支會議會\s+全部$/u.test(text.trim());
 }
 
+export function parseView(text: string): { id: number } | null {
+  const m = /^查看支會議會\s+(\d+)$/u.exec(text.trim());
+  if (!m) return null;
+  const id = parseInt(m[1], 10);
+  if (isNaN(id) || id <= 0) return null;
+  return { id };
+}
+
 export function parseAdd(text: string): AddPayload | null {
   const m = /^新增支會議會\s+(.+)$/u.exec(text.trim());
   if (!m) {

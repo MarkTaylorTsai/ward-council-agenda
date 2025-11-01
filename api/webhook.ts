@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseServer } from '../src/lib/supabase.js';
 import { replyText, verifyLineSignature } from '../src/lib/line.js';
-import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser.js';
+import { isViewAll, parseAdd, parseDelete, parseUpdate, parseView } from '../src/lib/parser.js';
+import { formatMeeting } from '../src/lib/format.js';
 
 export const config = {
   api: {
@@ -174,6 +175,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               );
               return 'ok';
             }
+          }
+
+          // Check for viewing a specific meeting first
+          const view = parseView(text);
+          if (view) {
+            console.log('Matched: parseView command');
+            const { data, error } = await supabaseServer
+              .from('branch_meetings')
+              .select('*')
+              .eq('id', view.id)
+              .single();
+            if (error) throw error;
+            if (!data) {
+              await replyText(
+                replyToken,
+                `❌ 找不到會議記錄\n\n🆔 ID：${view.id}\n\n請使用「查看支會議會 全部」查看所有會議。`
+              );
+            } else {
+              await replyText(replyToken, formatMeeting(data));
+            }
+            return 'ok';
           }
 
           if (isViewAll(text)) {
