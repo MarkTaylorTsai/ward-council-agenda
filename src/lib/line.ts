@@ -22,3 +22,7 @@ export async function pushText(targetId: string, text: string) {
   await lineClient.pushMessage(targetId, { type: 'text', text });
 }
 
+export async function broadcastText(text: string) {
+  await lineClient.broadcast({ messages: [{ type: 'text', text }] });
+}
+

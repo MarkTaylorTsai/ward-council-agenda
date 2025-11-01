@@ -15,6 +15,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   const events = body?.events || [];
 
+  // Track groups and users from all events
+  await Promise.all(
+    events.map(async (event: any) => {
+      const source = event.source;
+      if (!source) return null;
+
+      // Track group or user
+      if (source.groupId) {
+        await supabaseServer
+          .from('line_contacts')
+          .upsert(
+            { contact_id: source.groupId, contact_type: 'group', last_seen_at: new Date().toISOString() },
+            { onConflict: 'contact_id' }
+          )
+          .catch(() => {}); // Ignore errors
+      } else if (source.userId) {
+        await supabaseServer
+          .from('line_contacts')
+          .upsert(
+            { contact_id: source.userId, contact_type: 'user', last_seen_at: new Date().toISOString() },
+            { onConflict: 'contact_id' }
+          )
+          .catch(() => {}); // Ignore errors
+      }
+      return null;
+    })
+  );
+
   const results = await Promise.all(
     events.map(async (event: any) => {
       if (event.type !== 'message' || event.message?.type !== 'text') return null;
