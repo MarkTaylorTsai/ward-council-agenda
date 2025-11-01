@@ -2,14 +2,35 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseServer } from '../src/lib/supabase.js';
 import { replyText, verifyLineSignature } from '../src/lib/line.js';
 import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser.js';
-import { Readable } from 'stream';
 
-function bufferFromStream(stream: Readable): Promise<Buffer> {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+function getRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    // Check if body is already available as raw
+    if (Buffer.isBuffer(req.body)) {
+      return resolve(req.body);
+    }
+    if (typeof req.body === 'string') {
+      return resolve(Buffer.from(req.body, 'utf8'));
+    }
+    
+    // Read from stream
     const chunks: Buffer[] = [];
-    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-    stream.on('end', () => resolve(Buffer.concat(chunks)));
-    stream.on('error', reject);
+    (req as any).on('data', (chunk: Buffer) => chunks.push(chunk));
+    (req as any).on('end', () => resolve(Buffer.concat(chunks)));
+    (req as any).on('error', reject);
+    
+    // If stream is already consumed, try to read from req.body
+    if (req.body && typeof req.body === 'object') {
+      // This shouldn't happen if bodyParser is false, but handle it
+      const bodyString = JSON.stringify(req.body);
+      resolve(Buffer.from(bodyString, 'utf8'));
+    }
   });
 }
 
@@ -17,23 +38,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    // Read raw body - Vercel may have already parsed it, so check both
-    let rawBodyBuffer: Buffer;
-    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-      // Body was already parsed - reconstruct exact JSON string
-      // This is less ideal but needed if Vercel parsed it
-      const bodyString = JSON.stringify(req.body);
-      rawBodyBuffer = Buffer.from(bodyString, 'utf8');
-      console.log('Body was already parsed, reconstructing:', bodyString);
-    } else if (Buffer.isBuffer(req.body)) {
-      rawBodyBuffer = req.body;
-    } else if (typeof req.body === 'string') {
-      rawBodyBuffer = Buffer.from(req.body, 'utf8');
-    } else {
-      // Read from stream
-      rawBodyBuffer = await bufferFromStream(req as any);
-    }
-    
+    // Always read raw body for signature verification
+    const rawBodyBuffer = await getRawBody(req);
     const signature = req.headers['x-line-signature'] as string | undefined;
     
     // Verify signature BEFORE parsing body
@@ -48,9 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Parse body after signature verification
-    const body = typeof req.body === 'object' && !Buffer.isBuffer(req.body) 
-      ? req.body 
-      : JSON.parse(rawBodyBuffer.toString('utf8'));
+    const body = JSON.parse(rawBodyBuffer.toString('utf8'));
     const events = body?.events || [];
 
     // Track groups and users from all events
