@@ -1,0 +1,82 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseServer } from '../src/lib/supabase';
+import { replyText, verifyLineSignature } from '../src/lib/line';
+import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+  const signature = req.headers['x-line-signature'] as string | undefined;
+  if (!verifyLineSignature(rawBody, signature)) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const events = body?.events || [];
+
+  const results = await Promise.all(
+    events.map(async (event: any) => {
+      if (event.type !== 'message' || event.message?.type !== 'text') return null;
+      const text: string = event.message.text.trim();
+      const replyToken: string = event.replyToken;
+
+      try {
+        if (isViewAll(text)) {
+          const { data, error } = await supabaseServer
+            .from('branch_meetings')
+            .select('*')
+            .order('date', { ascending: true })
+            .order('time', { ascending: true });
+          if (error) throw error;
+          if (!data || data.length === 0) {
+            await replyText(replyToken, '目前沒有已儲存的支會議會。');
+          } else {
+            const lines = data.map((m) => `${m.id} ${m.date} ${m.time.slice(0,5)} ${m.location}`);
+            await replyText(replyToken, ['已儲存的支會議會：', ...lines].join('\n'));
+          }
+          return 'ok';
+        }
+
+        const add = parseAdd(text);
+        if (add) {
+          const { data, error } = await supabaseServer.from('branch_meetings').insert(add).select('id').single();
+          if (error) throw error;
+          await replyText(replyToken, `新增成功，id：${data.id}`);
+          return 'ok';
+        }
+
+        const upd = parseUpdate(text);
+        if (upd) {
+          const { error } = await supabaseServer
+            .from('branch_meetings')
+            .update({ [upd.field]: upd.value })
+            .eq('id', upd.id);
+          if (error) throw error;
+          await replyText(replyToken, `更新成功：${upd.field}`);
+          return 'ok';
+        }
+
+        const del = parseDelete(text);
+        if (del) {
+          const { error } = await supabaseServer.from('branch_meetings').delete().eq('id', del.id);
+          if (error) throw error;
+          await replyText(replyToken, '刪除成功');
+          return 'ok';
+        }
+
+        await replyText(
+          replyToken,
+          '指令無法辨識。請使用：\n查看支會議會 全部\n新增支會議會 {日期 時間 地點 主持人 記錄人 目的 開會祈禱 閉會祈禱}\n更新支會議會 {id 項目 新內容}\n刪除支會議會 {id}'
+        );
+        return 'ok';
+      } catch (e: any) {
+        await replyText(replyToken, `發生錯誤：${e?.message || 'unknown'}`);
+        return 'error';
+      }
+    })
+  );
+
+  res.status(200).json({ results });
+}
+

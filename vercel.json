@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/webhook", "methods": ["POST"], "dest": "/api/webhook.ts" },
+    { "src": "/api/sendReminder", "methods": ["GET", "POST"], "dest": "/api/sendReminder.ts" }
+  ]
+}
+
