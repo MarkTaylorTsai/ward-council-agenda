@@ -6,10 +6,11 @@ const channelSecret = process.env.LINE_CHANNEL_SECRET || '';
 
 export const lineClient = new Client({ channelAccessToken: accessToken } as ClientConfig);
 
-export function verifyLineSignature(rawBody: string, signatureHeader?: string): boolean {
+export function verifyLineSignature(rawBody: string | Buffer, signatureHeader?: string): boolean {
   if (!channelSecret || !signatureHeader) return false;
   const hmac = crypto.createHmac('sha256', channelSecret);
-  hmac.update(rawBody);
+  const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody, 'utf8');
+  hmac.update(bodyBuffer);
   const digest = hmac.digest('base64');
   return digest === signatureHeader;
 }

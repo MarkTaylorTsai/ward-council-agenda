@@ -9,11 +9,11 @@ export const config = {
   },
 };
 
-function getRawBody(req: VercelRequest): Promise<string> {
+function getRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
@@ -22,20 +22,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    // Get raw body for signature verification
-    const rawBody = await getRawBody(req);
+    // Get raw body - check if it's already available or read from stream
+    let rawBodyBuffer: Buffer;
+    if (Buffer.isBuffer(req.body)) {
+      rawBodyBuffer = req.body;
+    } else if (typeof req.body === 'string') {
+      rawBodyBuffer = Buffer.from(req.body, 'utf8');
+    } else {
+      // Read from stream if bodyParser is disabled
+      rawBodyBuffer = await getRawBody(req);
+    }
+    
     const signature = req.headers['x-line-signature'] as string | undefined;
     
-    if (!verifyLineSignature(rawBody, signature)) {
+    if (!verifyLineSignature(rawBodyBuffer, signature)) {
       console.error('Signature verification failed.', {
         hasSignature: !!signature,
-        hasBody: !!rawBody,
-        bodyLength: rawBody?.length,
+        hasBody: !!rawBodyBuffer,
+        bodyLength: rawBodyBuffer?.length,
+        channelSecretSet: !!process.env.LINE_CHANNEL_SECRET,
       });
       return res.status(401).send('Invalid signature');
     }
 
-    const body = JSON.parse(rawBody);
+    const body = JSON.parse(rawBodyBuffer.toString('utf8'));
     const events = body?.events || [];
 
     // Track groups and users from all events
