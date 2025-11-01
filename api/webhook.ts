@@ -94,12 +94,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const results = await Promise.all(
       events.map(async (event: any) => {
-        if (event.type !== 'message' || event.message?.type !== 'text') return null;
+        if (event.type !== 'message' || event.message?.type !== 'text') {
+          console.log('Skipping non-text message event:', event.type);
+          return null;
+        }
         const text: string = event.message.text.trim();
         const replyToken: string = event.replyToken;
+        console.log('Processing text message:', { text, hasReplyToken: !!replyToken });
 
         try {
           if (isViewAll(text)) {
+            console.log('Matched: isViewAll command');
             const { data, error } = await supabaseServer
               .from('branch_meetings')
               .select('*')
@@ -117,6 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const add = parseAdd(text);
           if (add) {
+            console.log('Matched: parseAdd command');
             const { data, error } = await supabaseServer.from('branch_meetings').insert(add).select('id').single();
             if (error) throw error;
             await replyText(replyToken, `新增成功，id：${data.id}`);
@@ -125,6 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const upd = parseUpdate(text);
           if (upd) {
+            console.log('Matched: parseUpdate command');
             const { error } = await supabaseServer
               .from('branch_meetings')
               .update({ [upd.field]: upd.value })
@@ -136,6 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const del = parseDelete(text);
           if (del) {
+            console.log('Matched: parseDelete command');
             const { error } = await supabaseServer.from('branch_meetings').delete().eq('id', del.id);
             if (error) throw error;
             await replyText(replyToken, '刪除成功');
@@ -143,6 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
 
           // Don't reply to unrecognized messages - just ignore them
+          console.log('No command matched, ignoring message');
           return null;
         } catch (e: any) {
           console.error('Error processing message:', e);

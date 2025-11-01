@@ -33,7 +33,18 @@ export function createLineMiddleware() {
 }
 
 export async function replyText(replyToken: string, text: string) {
-  await lineClient.replyMessage(replyToken, { type: 'text', text });
+  if (!accessToken) {
+    console.error('LINE_CHANNEL_ACCESS_TOKEN not set, cannot reply');
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN not configured');
+  }
+  console.log('Sending reply:', { replyToken: replyToken.substring(0, 10) + '...', textLength: text.length });
+  try {
+    await lineClient.replyMessage(replyToken, { type: 'text', text });
+    console.log('Reply sent successfully');
+  } catch (error: any) {
+    console.error('Error sending reply:', error?.message || error);
+    throw error;
+  }
 }
 
 export async function pushText(targetId: string, text: string) {
