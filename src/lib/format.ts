@@ -40,7 +40,33 @@ export function formatMeeting(m: BranchMeeting): string {
 }
 
 export function formatReminder(list: BranchMeeting[]): string {
-  if (!list.length) return '本週無支會議會提醒。';
-  return list.map(formatMeeting).join('\n\n——\n\n');
+  if (!list.length) {
+    return '📅 本週支會議會提醒\n\n✅ 本週無支會議會安排。';
+  }
+
+  const header = `📅 本週支會議會提醒\n\n找到 ${list.length} 個會議：\n`;
+  
+  const meetings = list.map((m, index) => {
+    const time = m.time.slice(0, 5);
+    const meetingNumber = list.length > 1 ? `\n📌 會議 ${index + 1}/${list.length}` : '';
+    
+    return [
+      `${meetingNumber}`,
+      `📅 日期：${m.date}`,
+      `🕒 時間：${time}`,
+      `📍 地點：${m.location}`,
+      `👤 主持人：${m.host}`,
+      `📝 記錄人：${m.recorder}`,
+      `📋 目的：${m.purpose}`,
+      ...(m.follow_up_items 
+        ? [`\n📌 上次會議事項追蹤：\n${m.follow_up_items.split('\n').filter(line => line.trim()).join('\n')}`]
+        : []),
+      ...(m.discussion_topics 
+        ? [`\n💬 討論主題：\n${m.discussion_topics.split('\n').filter(line => line.trim()).join('\n')}`]
+        : []),
+    ].filter(Boolean).join('\n');
+  });
+
+  return header + meetings.join('\n\n' + '─'.repeat(20) + '\n\n');
 }
 
