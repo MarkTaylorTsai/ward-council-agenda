@@ -60,23 +60,26 @@ export function parseAdd(text: string): AddPayload | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function parseUpdate(text: string): { id: string; field: UpdatableField; value: string } | null {
+export function parseUpdate(text: string): { id: number; field: UpdatableField; value: string } | null {
   const m = /^更新支會議會\s+(.+)$/u.exec(text.trim());
   if (!m) return null;
   const args = smartSplit(m[1]);
   if (args.length < 3) return null;
-  const [id, field, ...rest] = args;
-  if (!/^[0-9a-fA-F-]{36}$/.test(id)) return null;
+  const [idStr, field, ...rest] = args;
+  const id = parseInt(idStr, 10);
+  if (isNaN(id) || id <= 0) return null;
   if (!FIELD_KEYS.includes(field as UpdatableField)) return null;
   const value = rest.join(' ');
   if (!value) return null;
   return { id, field: field as UpdatableField, value };
 }
 
-export function parseDelete(text: string): { id: string } | null {
-  const m = /^刪除支會議會\s+([0-9a-fA-F-]{36})$/u.exec(text.trim());
+export function parseDelete(text: string): { id: number } | null {
+  const m = /^刪除支會議會\s+(\d+)$/u.exec(text.trim());
   if (!m) return null;
-  return { id: m[1] };
+  const id = parseInt(m[1], 10);
+  if (isNaN(id) || id <= 0) return null;
+  return { id };
 }
 
 function smartSplit(input: string): string[] {

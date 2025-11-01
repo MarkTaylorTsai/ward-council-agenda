@@ -13,7 +13,7 @@ export const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 export type BranchMeeting = {
-  id: string;
+  id: number;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm:ss or HH:mm
   location: string;

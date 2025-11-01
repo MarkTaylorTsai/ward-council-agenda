@@ -1,7 +1,7 @@
 -- Branch meetings table and updated_at trigger
 
 create table if not exists public.branch_meetings (
-  id uuid primary key default gen_random_uuid(),
+  id serial primary key,
   date date not null,
   time time not null,
   location text not null,
