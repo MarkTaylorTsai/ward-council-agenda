@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseServer } from '../src/lib/supabase';
-import { addSchema } from '../src/lib/parser';
+import { supabaseServer } from '../src/lib/supabase.js';
+import { addSchema } from '../src/lib/parser.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');

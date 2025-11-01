@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseServer } from '../src/lib/supabase';
+import { supabaseServer } from '../src/lib/supabase.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data, error } = await supabaseServer

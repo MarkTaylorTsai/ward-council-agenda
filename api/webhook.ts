@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseServer } from '../src/lib/supabase';
-import { replyText, verifyLineSignature } from '../src/lib/line';
-import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser';
+import { supabaseServer } from '../src/lib/supabase.js';
+import { replyText, verifyLineSignature } from '../src/lib/line.js';
+import { isViewAll, parseAdd, parseDelete, parseUpdate } from '../src/lib/parser.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {

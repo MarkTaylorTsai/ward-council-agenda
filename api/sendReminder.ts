@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseServer } from '../src/lib/supabase';
-import { formatReminder } from '../src/lib/format';
-import { pushText, broadcastText } from '../src/lib/line';
+import { supabaseServer } from '../src/lib/supabase.js';
+import { formatReminder } from '../src/lib/format.js';
+import { pushText, broadcastText } from '../src/lib/line.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
 

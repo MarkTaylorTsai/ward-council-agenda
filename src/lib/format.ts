@@ -1,4 +1,4 @@
-import type { BranchMeeting } from './supabase';
+import type { BranchMeeting } from './supabase.js';
 
 export function formatMeeting(m: BranchMeeting): string {
   const time = m.time.slice(0, 5);
