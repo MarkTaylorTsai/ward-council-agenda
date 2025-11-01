@@ -68,3 +68,7 @@ begin
 end;
 $$ language plpgsql;
 
+-- Create index on user_id for faster lookups
+create index if not exists idx_conversation_states_user_id on public.conversation_states(user_id);
+create index if not exists idx_conversation_states_created_at on public.conversation_states(created_at);
+
