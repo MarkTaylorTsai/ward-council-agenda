@@ -22,6 +22,8 @@ export type BranchMeeting = {
   purpose: string;
   opening_prayer: string;
   closing_prayer: string;
+  follow_up_items?: string | null; // 上次會議事項追蹤
+  discussion_topics?: string | null; // 討論主題
   created_at: string;
   updated_at: string;
 };

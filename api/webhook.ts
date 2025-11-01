@@ -100,9 +100,82 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const text: string = event.message.text.trim();
         const replyToken: string = event.replyToken;
-        console.log('Processing text message:', { text, hasReplyToken: !!replyToken });
+        const userId = event.source?.userId || event.source?.groupId || '';
+        console.log('Processing text message:', { text, hasReplyToken: !!replyToken, userId });
 
         try {
+          // Check if user is waiting for a follow-up response
+          const { data: conversationStates } = await supabaseServer
+            .from('conversation_states')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const conversationState = conversationStates?.[0];
+
+          if (conversationState && conversationState.meeting_id) {
+            // User is in a follow-up conversation
+            const items = text.split(/\s+/).filter(item => item.trim());
+            if (items.length === 0) {
+              await replyText(replyToken, '❌ 請輸入至少一個項目');
+              return 'ok';
+            }
+
+            // Format items with numbers
+            const formattedItems = items.map((item, idx) => `${idx + 1}. ${item}`).join('\n');
+
+            if (conversationState.waiting_for === 'follow_up_items') {
+              // Update meeting with follow-up items
+              const { error } = await supabaseServer
+                .from('branch_meetings')
+                .update({ follow_up_items: formattedItems })
+                .eq('id', conversationState.meeting_id);
+
+              if (error) throw error;
+
+              // Delete current state and create new one for next question
+              await supabaseServer
+                .from('conversation_states')
+                .delete()
+                .eq('id', conversationState.id);
+
+              await supabaseServer
+                .from('conversation_states')
+                .insert({
+                  user_id: userId,
+                  meeting_id: conversationState.meeting_id,
+                  waiting_for: 'discussion_topics',
+                });
+
+              await replyText(
+                replyToken,
+                '✅ 已記錄上次會議事項追蹤\n\n📋 這次會議討論主題為何？\n格式：項目一 項目二 項目三（可輸入多個項目）'
+              );
+              return 'ok';
+            } else if (conversationState.waiting_for === 'discussion_topics') {
+              // Update meeting with discussion topics
+              const { error } = await supabaseServer
+                .from('branch_meetings')
+                .update({ discussion_topics: formattedItems })
+                .eq('id', conversationState.meeting_id);
+
+              if (error) throw error;
+
+              // Delete conversation state - flow complete
+              await supabaseServer
+                .from('conversation_states')
+                .delete()
+                .eq('id', conversationState.id);
+
+              await replyText(
+                replyToken,
+                '✅ 已記錄討論主題\n\n🎉 會議記錄完成！\n使用「查看支會議會 全部」可查看完整記錄。'
+              );
+              return 'ok';
+            }
+          }
+
           if (isViewAll(text)) {
             console.log('Matched: isViewAll command');
             const { data, error } = await supabaseServer
@@ -133,9 +206,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const { data, error } = await supabaseServer.from('branch_meetings').insert(add).select('id').single();
             if (error) throw error;
             const time = add.time.slice(0, 5);
+            
+            // Create conversation state for follow-up questions
+            await supabaseServer
+              .from('conversation_states')
+              .insert({
+                user_id: userId,
+                meeting_id: data.id,
+                waiting_for: 'follow_up_items',
+              });
+
             await replyText(
               replyToken,
-              `✅ 新增成功！\n\n📅 日期：${add.date}\n🕒 時間：${time}\n📍 地點：${add.location}\n👤 主持人：${add.host}\n📝 記錄人：${add.recorder}\n\n🆔 ID：${data.id}\n\n使用此 ID 可以更新或刪除會議記錄。`
+              `✅ 新增成功！\n\n📅 日期：${add.date}\n🕒 時間：${time}\n📍 地點：${add.location}\n👤 主持人：${add.host}\n📝 記錄人：${add.recorder}\n\n🆔 ID：${data.id}\n\n📋 請輸入上周追蹤事項\n格式：項目一 項目二 項目三（可輸入多個項目）`
             );
             return 'ok';
           }

@@ -14,8 +14,9 @@ export function formatMeeting(m: BranchMeeting): string {
     '',
     '二、上次會議事項追蹤',
     '項目 負責人 進度／回報',
-    '1.',
-    '2.',
+    ...(m.follow_up_items 
+      ? m.follow_up_items.split('\n').filter(line => line.trim())
+      : ['1.', '2.']),
     '',
     '三、各組織報告',
     '組織',
@@ -29,8 +30,9 @@ export function formatMeeting(m: BranchMeeting): string {
     '傳道組:',
     '',
     '四、討論主題',
-    '1.',
-    '2.',
+    ...(m.discussion_topics 
+      ? m.discussion_topics.split('\n').filter(line => line.trim())
+      : ['1.', '2.']),
     '',
     '五、結束',
     `閉會祈禱：${m.closing_prayer}`,

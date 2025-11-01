@@ -10,6 +10,8 @@ create table if not exists public.branch_meetings (
   purpose text not null,
   opening_prayer text not null,
   closing_prayer text not null,
+  follow_up_items text, -- 上次會議事項追蹤
+  discussion_topics text, -- 討論主題
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -45,6 +47,24 @@ begin
   on conflict (contact_id)
   do update set last_seen_at = now();
   return NEW;
+end;
+$$ language plpgsql;
+
+-- Track conversation state for follow-up questions
+create table if not exists public.conversation_states (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  meeting_id integer references public.branch_meetings(id) on delete cascade,
+  waiting_for text not null check (waiting_for in ('follow_up_items', 'discussion_topics')),
+  created_at timestamptz not null default now()
+);
+
+-- Clean up old conversation states (older than 1 hour)
+create or replace function public.cleanup_old_states()
+returns void as $$
+begin
+  delete from public.conversation_states
+  where created_at < now() - interval '1 hour';
 end;
 $$ language plpgsql;
 
