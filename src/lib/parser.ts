@@ -32,9 +32,16 @@ export function isViewAll(text: string): boolean {
 
 export function parseAdd(text: string): AddPayload | null {
   const m = /^新增支會議會\s+(.+)$/u.exec(text.trim());
-  if (!m) return null;
+  if (!m) {
+    console.log('parseAdd: Pattern does not match');
+    return null;
+  }
   const args = smartSplit(m[1]);
-  if (args.length < 8) return null;
+  console.log('parseAdd: Split args:', args, 'Count:', args.length);
+  if (args.length < 8) {
+    console.log('parseAdd: Not enough arguments, need 8, got', args.length);
+    return null;
+  }
   const payload = {
     date: args[0],
     time: args[1],
@@ -45,7 +52,11 @@ export function parseAdd(text: string): AddPayload | null {
     opening_prayer: args[6],
     closing_prayer: args[7],
   };
+  console.log('parseAdd: Payload:', payload);
   const parsed = addSchema.safeParse(payload);
+  if (!parsed.success) {
+    console.log('parseAdd: Validation failed:', parsed.error.errors);
+  }
   return parsed.success ? parsed.data : null;
 }
 
