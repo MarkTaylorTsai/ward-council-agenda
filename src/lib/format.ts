@@ -5,8 +5,11 @@ export function formatMeeting(m: BranchMeeting): string {
   return [
     '🕊️ 支會議會 議程',
     '',
-    `📅 日期：${m.date}　🕒 時間：${time}　📍 地點：${m.location}`,
-    `主持人：${m.host}　　　記錄人：${m.recorder}`,
+    `📅 日期：${m.date}`,
+    `🕒 時間：${time}`,
+    `📍 地點：${m.location}`,
+    `主持人：${m.host}`,
+    `記錄人：${m.recorder}`,
     `本次會議目的說明：${m.purpose}`,
     '',
     '一、開會',
@@ -40,7 +43,7 @@ export function formatReminder(list: BranchMeeting[]): string {
     return '📅 本週支會議會提醒\n\n✅ 本週無支會議會安排。';
   }
 
-  const header = `📅 本週支會議會提醒\n\n找到 ${list.length} 個會議：\n`;
+  const header = `📅 本週支會議會提醒\n\n`;
   
   const meetings = list.map((m, index) => {
     const meetingNumber = list.length > 1 ? `📌 會議 ${index + 1}/${list.length}\n\n` : '';
